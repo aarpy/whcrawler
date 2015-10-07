@@ -1,20 +1,25 @@
 package cache
 
-// GetFunc to get the key value pairs
-type GetFunc func(key string) string
+import (
+	"github.com/aarpy/wisehoot/crawler/dnsapi/api"
+)
 
-// Cache inteface
+// GetFunc to get the key value pairs
+type GetFunc func(request *api.ValueRequest)
+
+// Cache interface
 type Cache interface {
-	GetValue(key string) string
+	GetValue(request *api.ValueRequest)
 	RemoveValue(key string)
 	Close()
 }
 
 // NewCache function
-func NewCache(cacheSize int64, hostAddr string, getFunc GetFunc) Cache {
-	redisCacheMgr := NewRedisCache(hostAddr, getFunc)
-	groupCacheMgr := NewGroupCache(cacheSize, func(key string) string {
-		return redisCacheMgr.GetValue(key)
+func NewCache(cacheSize int64, hostAddress string, getFunc GetFunc) Cache {
+	redisCacheMgr := NewRedisCache(hostAddress, getFunc)
+
+	groupCacheMgr := NewGroupCache(cacheSize, func(request *api.ValueRequest) {
+		redisCacheMgr.GetValue(request)
 	})
 
 	return &cacheMgr{groupCache: groupCacheMgr, redisCache: redisCacheMgr}
@@ -25,8 +30,8 @@ type cacheMgr struct {
 	redisCache Cache
 }
 
-func (c *cacheMgr) GetValue(key string) string {
-	return c.groupCache.GetValue(key)
+func (c *cacheMgr) GetValue(request *api.ValueRequest) {
+	c.groupCache.GetValue(request)
 }
 
 func (c *cacheMgr) RemoveValue(key string) {

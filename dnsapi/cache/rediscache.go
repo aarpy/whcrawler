@@ -1,36 +1,48 @@
 package cache
 
-import "gopkg.in/redis.v3"
+import (
+	"gopkg.in/redis.v3"
+
+	"github.com/aarpy/wisehoot/crawler/dnsapi/api"
+)
 
 // NewRedisCache function
-func NewRedisCache(hostAddr string, getFunc1 GetFunc) Cache {
+func NewRedisCache(hostAddress string, getFunc GetFunc) Cache {
 	return &redisCache{
 		client: redis.NewClient(&redis.Options{
-			Addr:     hostAddr,
+			Addr:     hostAddress,
 			Password: "", // no password set
 			DB:       0,  // use default DB
 		}),
-		getFunc: getFunc1}
+		resolverFunc: getFunc}
 }
 
 type redisCache struct {
-	client  *redis.Client
-	getFunc GetFunc
+	client       *redis.Client
+	resolverFunc GetFunc
 }
 
-func (c *redisCache) GetValue(key string) string {
-	value, err := c.client.Get(key).Result()
+func (c *redisCache) GetValue(request *api.ValueRequest) {
+	// Get from Redis
+	value, err := c.client.Get(request.Key).Result()
+
+	// Value found
 	if err == redis.Nil {
-		// key does not exist
-		value = c.getFunc(key)
-		if value != "" {
-			c.client.Set(key, value, 0)
-		}
-	} else if err != nil {
-		// error occurred
-		panic(err)
+		// Notify the calling group cache
+		request.Response <- api.NewValueResponse(value, nil)
+		return
 	}
-	return value
+
+	// Request Resolver
+	resolverRequest := api.NewValueRequest(request.Key)
+	c.resolverFunc(resolverRequest)
+	resolverResponse := <-resolverRequest.Response
+
+	// Save it to Redis irrespectively to ensure no requests are sent to Resolver
+	c.client.Set(request.Key, resolverResponse.Value, 0)
+
+	// Notify the calling group cache
+	request.Response <- resolverResponse
 }
 
 func (c *redisCache) RemoveValue(key string) {

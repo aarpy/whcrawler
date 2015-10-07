@@ -11,7 +11,7 @@ import (
 
 const (
 	dnsServer      = "8.8.8.8:53"
-	dnsConcurency  = 5000
+	dnsConcurrency = 5000
 	dnsRetryTime   = "1s"
 	groupCacheSize = 1 << 20
 	redisHost      = "localhost:6379"
@@ -20,7 +20,7 @@ const (
 func main() {
 	log.Info("Wisehoot cralwer started1")
 
-	dnsCache := dnsapi.NewDNSCache(dnsServer, dnsConcurency, dnsRetryTime, groupCacheSize, redisHost)
+	dnsCache := dnsapi.NewDNSCache(dnsServer, dnsConcurrency, dnsRetryTime, groupCacheSize, redisHost)
 
 	dnsCache.GetIP("wisehoot.co", func(ips []net.IP, err error) {
 		log.Info("wisehoot.co:", ips, err)

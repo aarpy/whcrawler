@@ -1,6 +1,10 @@
 package cache
 
-import gc "github.com/golang/groupcache"
+import (
+	gc "github.com/golang/groupcache"
+
+	"github.com/aarpy/wisehoot/crawler/dnsapi/api"
+)
 
 const (
 	singleGroupName = "shared"
@@ -12,19 +16,26 @@ type groupCacheMgr struct {
 }
 
 // NewGroupCache function
-func NewGroupCache(cacheSize int64, getFunc GetFunc) Cache {
+func NewGroupCache(cacheSize int64, redisGetFunc GetFunc) Cache {
 	return &groupCacheMgr{
-		group: gc.NewGroup(singleGroupName, cacheSize, gc.GetterFunc(func(_ gc.Context, key string, dest gc.Sink) error {
-			return dest.SetString(getFunc(key))
+		group: gc.NewGroup(singleGroupName, cacheSize, gc.GetterFunc(func(ctx gc.Context, key string, dest gc.Sink) error {
+
+			redisRequest := api.NewValueRequest(key)
+			redisGetFunc(redisRequest)
+			redisResponse := <-redisRequest.Response
+
+			return dest.SetString(redisResponse.Value)
 		}))}
 }
 
-func (c *groupCacheMgr) GetValue(key string) string {
+func (c *groupCacheMgr) GetValue(request *api.ValueRequest) {
+
 	var value string
-	if err := c.group.Get(c.ctx, key, gc.StringSink(&value)); err != nil {
-		return ""
-	}
-	return value
+	err := c.group.Get(request, request.Key, gc.StringSink(&value))
+
+	// send response to client
+	request.Response <- api.NewValueResponse(value, err)
+	close(request.Response)
 }
 
 func (c *groupCacheMgr) RemoveValue(key string) {
