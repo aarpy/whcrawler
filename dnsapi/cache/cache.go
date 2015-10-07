@@ -1,6 +1,8 @@
 package cache
 
 import (
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/aarpy/wisehoot/crawler/dnsapi/api"
 )
 
@@ -31,6 +33,8 @@ type cacheMgr struct {
 }
 
 func (c *cacheMgr) GetValue(request *api.ValueRequest) {
+	log.WithField("domain", request.Key).Info("Cache:GetValue")
+
 	c.groupCache.GetValue(request)
 }
 

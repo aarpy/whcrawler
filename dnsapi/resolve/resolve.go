@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 func doReadDomains(domains chan<- string, domainSlotAvailable <-chan bool) {
@@ -63,6 +65,8 @@ func NewResolver(dnsServer string, concurrency int, packetsPerSecond int, retryT
 
 // Resolve function to resolve a domain name into IP address
 func (r *resolveMgr) Resolve(domainName string) net.IP {
+
+	log.WithField("domain", domainName).Info("Resolver:Resolve")
 
 	sendingDelay = time.Duration(1000000000/r.packetsPerSecond) * time.Nanosecond
 	var err error

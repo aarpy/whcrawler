@@ -1,6 +1,7 @@
 package cache
 
 import (
+	log "github.com/Sirupsen/logrus"
 	gc "github.com/golang/groupcache"
 
 	"github.com/aarpy/wisehoot/crawler/dnsapi/api"
@@ -19,23 +20,36 @@ type groupCacheMgr struct {
 func NewGroupCache(cacheSize int64, redisGetFunc GetFunc) Cache {
 	return &groupCacheMgr{
 		group: gc.NewGroup(singleGroupName, cacheSize, gc.GetterFunc(func(ctx gc.Context, key string, dest gc.Sink) error {
+			log.WithField("domain", key).Info("GroupCache:RedisRequest")
 
-			redisRequest := api.NewValueRequest(key)
+			redisRequest := api.NewValueRequest(key, "GroupCache")
+			log.WithField("domain", key).Info("GroupCache:RedisRequest:Func")
 			redisGetFunc(redisRequest)
+			log.WithField("domain", key).Info("GroupCache:RedisRequest:Wait")
 			redisResponse := <-redisRequest.Response
 
+			log.WithField("domain", key).Info("GroupCache:RedisRequest:Done")
 			return dest.SetString(redisResponse.Value)
 		}))}
 }
 
 func (c *groupCacheMgr) GetValue(request *api.ValueRequest) {
+	log.WithField("domain", request.Key).Info("GroupCache:GetValue")
 
 	var value string
 	err := c.group.Get(request, request.Key, gc.StringSink(&value))
 
+	log.WithFields(log.Fields{
+		"domain": request.Key,
+		"value":  value,
+		"owner":  request.Owner,
+	}).Info("GroupCache:GetValue:Get")
+
 	// send response to client
 	request.Response <- api.NewValueResponse(value, err)
 	close(request.Response)
+
+	log.WithField("domain", request.Key).Info("GroupCache:GetValue:Done")
 }
 
 func (c *groupCacheMgr) RemoveValue(key string) {
