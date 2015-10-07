@@ -1,9 +1,5 @@
 package cache
 
-import (
-	"fmt"
-)
-
 // GetFunc to get the key value pairs
 type GetFunc func(key string) string
 
@@ -16,8 +12,6 @@ type Cache interface {
 
 // NewCache function
 func NewCache(cacheSize int64, hostAddr string, getFunc GetFunc) Cache {
-	fmt.Println("Creating new cache")
-
 	redisCacheMgr := NewRedisCache(hostAddr, getFunc)
 	groupCacheMgr := NewGroupCache(cacheSize, func(key string) string {
 		return redisCacheMgr.GetValue(key)

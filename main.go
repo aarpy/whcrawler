@@ -1,9 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
+	"net"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/aarpy/wisehoot/crawler/dnsapi"
 )
@@ -17,13 +18,23 @@ const (
 )
 
 func main() {
-	fmt.Fprintln(os.Stdout, "Wisehoot cralwer started")
+	log.Info("Wisehoot cralwer started1")
 
 	dnsCache := dnsapi.NewDNSCache(dnsServer, dnsConcurency, dnsRetryTime, groupCacheSize, redisHost)
-	dnsCache.GetIP("wisehoot.co")
-	dnsCache.GetIP("wisehoot.co")
-	dnsCache.GetIP("wisehoot.co")
-	dnsCache.GetIP("wisehoot.co")
+
+	dnsCache.GetIP("wisehoot.co", func(ips []net.IP, err error) {
+		log.Info("wisehoot.co:", ips, err)
+	})
+	dnsCache.GetIP("yahoo.com", func(ips []net.IP, err error) {
+		log.Info("yahoo.com:", ips, err)
+	})
+	dnsCache.GetIP("google.com", func(ips []net.IP, err error) {
+		log.Info("google.com:", ips, err)
+	})
+	dnsCache.GetIP("cnn.com", func(ips []net.IP, err error) {
+		log.Info("cnn.com:", ips, err)
+	})
 
 	time.Sleep(10 * time.Millisecond)
+	log.Info("Wisehoot cralwer completed")
 }
