@@ -21,18 +21,15 @@ func main() {
 
 	dnsCache := dnsapi.NewDNSCache(dnsServer, dnsConcurrency, dnsRetryTime, groupCacheSize, redisHost)
 
-	for i := 0; i < 3; i++ {
-		domains := []string{"wisehoot.co"}
-		for _, domain := range domains {
-			dnsCache.GetIP(domain, func(ips []net.IP, err error) {
-				log.WithFields(log.Fields{
-					"domain":  domain,
-					"ips":     ips,
-					"ips_len": len(ips),
-				}).Info("Main:Domain:Complete")
-			})
-			log.Info("----")
-		}
+	domains := []string{"wisehoot.co", "google.com", "microsoft.com", "industrycharlotte.com"}
+	for _, domain := range domains {
+		dnsCache.GetIP(domain, func(ips []net.IP, err error) {
+			log.WithFields(log.Fields{
+				"domain":  domain,
+				"ips":     ips,
+				"ips_len": len(ips),
+			}).Info("Main:Domain:Complete")
+		})
 	}
 
 	log.Info("Wisehoot cralwer completed")

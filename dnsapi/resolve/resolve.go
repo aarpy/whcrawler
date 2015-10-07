@@ -1,9 +1,7 @@
 package resolve
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"math/rand"
 	"net"
 	"os"
@@ -12,32 +10,19 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+
+	"github.com/aarpy/wisehoot/crawler/dnsapi/api"
 )
 
-func doReadDomains(domains chan<- string, domainSlotAvailable <-chan bool) {
-	in := bufio.NewReader(os.Stdin)
-
+func doReadDomains(request *api.ValueRequest, requests chan<- *api.ValueRequest, domainSlotAvailable <-chan bool) {
 	for _ = range domainSlotAvailable {
 
-		input, err := in.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "read(stdin): %s\n", err)
-			os.Exit(1)
-		}
+		request.Key += "."
 
-		input = strings.TrimSpace(input)
-		if input == "" {
-			continue
-		}
+		requests <- request
 
-		domain := input + "."
-
-		domains <- domain
+		break
 	}
-	close(domains)
 }
 
 var sendingDelay time.Duration
@@ -45,53 +30,54 @@ var retryDelay time.Duration
 
 // Resolver interface
 type Resolver interface {
-	Resolve(domainName string) net.IP
+	Resolve(request *api.ValueRequest)
 }
 
 type resolveMgr struct {
-	dnsServer        string
-	concurrency      int
-	packetsPerSecond int
-	retryTime        string
-	verbose          bool
-	ipv6             bool
-	conn             net.Conn
+	dnsServer           string
+	concurrency         int
+	packetsPerSecond    int
+	retryTime           string
+	verbose             bool
+	ipv6                bool
+	conn                net.Conn
+	requests            chan *api.ValueRequest
+	domainSlotAvailable chan bool
 }
 
 // NewResolver function
 func NewResolver(dnsServer string, concurrency int, packetsPerSecond int, retryTime string, verbose bool, ipv6 bool) Resolver {
-	return &resolveMgr{dnsServer, concurrency, packetsPerSecond, retryTime, verbose, ipv6, nil}
+	mgr := &resolveMgr{dnsServer, concurrency, packetsPerSecond, retryTime, verbose, ipv6, nil, nil, nil}
+
+	go mgr.init()
+
+	return mgr
 }
 
-// Resolve function to resolve a domain name into IP address
-func (r *resolveMgr) Resolve(domainName string) net.IP {
-
-	log.WithField("domain", domainName).Info("Resolver:Resolve")
+func (r *resolveMgr) init() {
 
 	sendingDelay = time.Duration(1000000000/r.packetsPerSecond) * time.Nanosecond
 	var err error
 	retryDelay, err = time.ParseDuration(r.retryTime)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Can't parse duration %s\n", r.retryTime)
-		return nil
+		panic(err)
 	}
 
 	fmt.Fprintf(os.Stderr, "Server: %s, sending delay: %s (%d pps), retry delay: %s\n",
 		r.dnsServer, sendingDelay, r.packetsPerSecond, retryDelay)
 
-	domains := make(chan string, r.concurrency)
-	domainSlotAvailable := make(chan bool, r.concurrency)
+	r.requests = make(chan *api.ValueRequest, r.concurrency)
+	r.domainSlotAvailable = make(chan bool, r.concurrency)
 
 	for i := 0; i < r.concurrency; i++ {
-		domainSlotAvailable <- true
+		r.domainSlotAvailable <- true
 	}
-
-	go doReadDomains(domains, domainSlotAvailable)
 
 	c, err := net.Dial("udp", r.dnsServer)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "bind(udp, %s): %s\n", r.dnsServer, err)
-		os.Exit(1)
+		panic(err)
 	}
 
 	// Used as a queue. Make sure it has plenty of storage available.
@@ -101,13 +87,15 @@ func (r *resolveMgr) Resolve(domainName string) net.IP {
 	resolved := make(chan *domainAnswer, r.concurrency)
 	tryResolving := make(chan *domainRecord, r.concurrency)
 
+	log.Info("Running resolver functions")
 	go doTimeouter(timeoutRegister, timeoutExpired)
 
 	go doSend(c, tryResolving, r.ipv6)
 	go doReceive(c, resolved, r.ipv6)
 
+	log.Info("Running Map functions")
 	t0 := time.Now()
-	domainsCount, avgTries := doMapGaurd(domains, domainSlotAvailable,
+	domainsCount, avgTries := doMapGaurd(r.requests, r.domainSlotAvailable,
 		timeoutRegister, timeoutExpired,
 		tryResolving, resolved, r.verbose)
 	td := time.Now().Sub(t0)
@@ -117,12 +105,21 @@ func (r *resolveMgr) Resolve(domainName string) net.IP {
 		avgTries,
 		float64(domainsCount)/td.Seconds())
 
-	return nil
+	log.Info("Resolver: Initilized")
+}
+
+// Resolve function to resolve a domain name into IP address
+func (r *resolveMgr) Resolve(request *api.ValueRequest) {
+
+	log.WithField("domain", request.Key).Info("Resolver:Resolve")
+
+	doReadDomains(request, r.requests, r.domainSlotAvailable)
+
 }
 
 type domainRecord struct {
 	id      uint16
-	domain  string
+	request *api.ValueRequest
 	timeout time.Time
 	resend  int
 }
@@ -133,7 +130,7 @@ type domainAnswer struct {
 	ips    []net.IP
 }
 
-func doMapGaurd(domains <-chan string,
+func doMapGaurd(requests <-chan *api.ValueRequest,
 	domainSlotAvailable chan<- bool,
 	timeoutRegister chan<- *domainRecord,
 	timeoutExpired <-chan *domainRecord,
@@ -150,13 +147,8 @@ func doMapGaurd(domains <-chan string,
 
 	for done == false || len(m) > 0 {
 		select {
-		case domain := <-domains:
+		case domain := <-requests:
 			fmt.Fprintf(os.Stdout, "Found domain: %s\n", domain)
-			if domain == "" {
-				domains = make(chan string)
-				done = true
-				break
-			}
 			var id uint16
 			for {
 				id = uint16(rand.Int())
@@ -178,7 +170,7 @@ func doMapGaurd(domains <-chan string,
 				dr.timeout = time.Now()
 				if verbose {
 					fmt.Fprintf(os.Stderr, "0x%04x resend (try:%d) %s\n", dr.id,
-						dr.resend, dr.domain)
+						dr.resend, dr.request.Key)
 				}
 				timeoutRegister <- dr
 				tryResolving <- dr
@@ -187,17 +179,17 @@ func doMapGaurd(domains <-chan string,
 		case da := <-resolved:
 			if m[da.id] != nil {
 				dr := m[da.id]
-				if dr.domain != da.domain {
+				if dr.request.Key != da.domain {
 					if verbose {
 						fmt.Fprintf(os.Stderr, "0x%04x error, unrecognized domain: %s != %s\n",
-							da.id, dr.domain, da.domain)
+							da.id, dr.request.Key, da.domain)
 					}
 					break
 				}
 
 				if verbose {
 					fmt.Fprintf(os.Stderr, "0x%04x resolved %s\n",
-						dr.id, dr.domain)
+						dr.id, dr.request.Key)
 				}
 
 				s := make([]string, 0, 16)
@@ -207,8 +199,11 @@ func doMapGaurd(domains <-chan string,
 				sort.Sort(sort.StringSlice(s))
 
 				// without trailing dot
-				domain := dr.domain[:len(dr.domain)-1]
-				fmt.Printf("%s, %s\n", domain, strings.Join(s, " "))
+				dr.request.Key = dr.request.Key[:len(dr.request.Key)-1]
+				ips := strings.Join(s, " ")
+				fmt.Printf("%s, %s\n", dr.request.Key, ips)
+
+				dr.request.Response <- api.NewValueResponse(ips, nil)
 
 				sumTries += dr.resend
 				domainCount++
@@ -245,7 +240,7 @@ func doSend(c net.Conn, tryResolving <-chan *domainRecord, ipv6 bool) {
 		} else {
 			t = dnsTypeAAAA
 		}
-		msg := packDns(dr.domain, dr.id, t)
+		msg := packDns(dr.request.Key, dr.id, t)
 
 		_, err := c.Write(msg)
 		if err != nil {

@@ -23,14 +23,19 @@ func NewDNSCache(dnsServer string, dnsConcurency int, dnsRetryTime string, group
 
 	cacheMgr := cache.NewCache(groupCacheSize, redisHost, func(request *api.ValueRequest) {
 
-		response := api.NewValueResponse("52.1.98.187", nil)
+		log.WithField("domain", request.Key).Info("DnsApi:ResolverRequest")
 
-		log.WithField("IP", response.Value).Info("Resolver response:")
+		resolverRequest := api.NewValueRequest(request.Key)
+		resolveMgr.Resolve(resolverRequest)
+		resolverResponse := <-resolverRequest.Response
+
+		log.WithFields(log.Fields{
+			"domain": request.Key,
+			"IP":     resolverResponse.Value,
+		}).Info("DnsApi:ResolverRequest:Done")
 
 		// Request from DNS
-		request.Response <- response
-
-		//return resolveMgr.Resolve(domainName).String()
+		request.Response <- resolverResponse
 	})
 
 	return &dnsCacheMgr{cache: cacheMgr, resolver: resolveMgr}
