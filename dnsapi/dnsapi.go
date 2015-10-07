@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"net"
 	"os"
-)
 
-const (
-	groupCacheSize = 1 << 20
+	"github.com/aarpy/wisehoot/crawler/dnsapi/cache"
+	"github.com/aarpy/wisehoot/crawler/dnsapi/resolve"
 )
 
 // DNSCache interface to communicate with the client
@@ -17,20 +16,19 @@ type DNSCache interface {
 }
 
 // NewDNSCache is a great class
-func NewDNSCache() DNSCache {
+func NewDNSCache(dnsServer string, dnsConcurency int, dnsRetryTime string, groupCacheSize int64, redisHost string) DNSCache {
 	fmt.Fprintln(os.Stdout, "Wisehoot cralwer started")
 
-	resolver := NewResolver()
+	resolveMgr := resolve.NewResolver(dnsServer, dnsConcurency, 120, dnsRetryTime, true, false)
+	cacheMgr := cache.NewCache(groupCacheSize, redisHost, func(domainName string) string {
+		return resolveMgr.Resolve(domainName).String()
+	})
 
-	return &dnsCacheMgr{
-		cache: NewCache(groupCacheSize, "localhost:6379", func(domainName string) string {
-			return resolver.resolve(domainName)
-		}),
-		resovler: resolver}
+	return &dnsCacheMgr{cache: cacheMgr, resolver: resolveMgr}
 }
 
 type dnsCacheMgr struct {
-	cache    Cache
+	cache    cache.Cache
 	resolver resolve.Resolver
 }
 

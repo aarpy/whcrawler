@@ -1,4 +1,4 @@
-package main
+package resolve
 
 import (
 	"bufio"
@@ -41,9 +41,9 @@ func doReadDomains(domains chan<- string, domainSlotAvailable <-chan bool) {
 var sendingDelay time.Duration
 var retryDelay time.Duration
 
-// Resovler interface
-type Resovler interface {
-	Resolve(domainNames []string) int
+// Resolver interface
+type Resolver interface {
+	Resolve(domainName string) int
 }
 
 type resolveMgr struct {
@@ -57,12 +57,12 @@ type resolveMgr struct {
 }
 
 // NewResolver function
-func NewResolver(dnsServer string, concurrency int, packetsPerSecond int, retryTime string, verbose bool, ipv6 bool) Resovler {
+func NewResolver(dnsServer string, concurrency int, packetsPerSecond int, retryTime string, verbose bool, ipv6 bool) Resolver {
 	return &resolveMgr{dnsServer, concurrency, packetsPerSecond, retryTime, verbose, ipv6, nil}
 }
 
 // Resolve function to resolve a domain name into IP address
-func (r *resolveMgr) Resolve(domainNames []string) int {
+func (r *resolveMgr) Resolve(domainName string) int {
 
 	sendingDelay = time.Duration(1000000000/r.packetsPerSecond) * time.Nanosecond
 	var err error

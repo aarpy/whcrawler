@@ -1,20 +1,21 @@
-package main
+package cache
 
 import "gopkg.in/redis.v3"
 
 // NewRedisCache function
-func NewRedisCache(hostAddr string, getFunc GetFunc) Cache {
+func NewRedisCache(hostAddr string, getFunc1 GetFunc) Cache {
 	return &redisCache{
 		client: redis.NewClient(&redis.Options{
 			Addr:     hostAddr,
 			Password: "", // no password set
 			DB:       0,  // use default DB
 		}),
-		getFunc: getFunc}
+		getFunc: getFunc1}
 }
 
 type redisCache struct {
-	client *redis.Client
+	client  *redis.Client
+	getFunc GetFunc
 }
 
 func (c *redisCache) GetValue(key string) string {
@@ -22,8 +23,8 @@ func (c *redisCache) GetValue(key string) string {
 	if err == redis.Nil {
 		// key does not exist
 		value = c.getFunc(key)
-		if value != nil {
-			c.Set(key, value, 0)
+		if value != "" {
+			c.client.Set(key, value, 0)
 		}
 	} else if err != nil {
 		// error occurred
@@ -32,7 +33,7 @@ func (c *redisCache) GetValue(key string) string {
 	return value
 }
 
-func (c *redisCache) RemoveValue(key string) string {
+func (c *redisCache) RemoveValue(key string) {
 	c.client.Del(key)
 }
 

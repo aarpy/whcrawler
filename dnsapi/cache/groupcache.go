@@ -1,4 +1,4 @@
-package main
+package cache
 
 import gc "github.com/golang/groupcache"
 
@@ -12,7 +12,7 @@ type groupCacheMgr struct {
 }
 
 // NewGroupCache function
-func NewGroupCache(cacheSize int, getFunc GetFunc) Cache {
+func NewGroupCache(cacheSize int64, getFunc GetFunc) Cache {
 	return &groupCacheMgr{
 		group: gc.NewGroup(singleGroupName, cacheSize, gc.GetterFunc(func(_ gc.Context, key string, dest gc.Sink) error {
 			return dest.SetString(getFunc(key))
@@ -21,14 +21,14 @@ func NewGroupCache(cacheSize int, getFunc GetFunc) Cache {
 
 func (c *groupCacheMgr) GetValue(key string) string {
 	var value string
-	if err := stringGroup.Get(ctx, key, gc.StringSink(&value)); err != nil {
-		return nil
+	if err := c.group.Get(c.ctx, key, gc.StringSink(&value)); err != nil {
+		return ""
 	}
 	return value
 }
 
-func (c *groupCacheMgr) RemoveValue(key string) string {
-	c.stringGroup.RemoveValue(key)
+func (c *groupCacheMgr) RemoveValue(key string) {
+	// not available
 }
 
 func (c *groupCacheMgr) Close() {

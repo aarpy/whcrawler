@@ -15,13 +15,15 @@ type Cache interface {
 }
 
 // NewCache function
-func NewCache(cacheSize int, hostAddr string, getFunc GetFunc) Cache {
+func NewCache(cacheSize int64, hostAddr string, getFunc GetFunc) Cache {
 	fmt.Println("Creating new cache")
-	return &cacheMgr{
-		groupCache: NewGroupCache(cacheSize, func(key string) string {
-			return c.redisCache.GetValue(key)
-		}),
-		redisCache: NewRedisCache(hostAddr, getFunc)}
+
+	redisCacheMgr := NewRedisCache(hostAddr, getFunc)
+	groupCacheMgr := NewGroupCache(cacheSize, func(key string) string {
+		return redisCacheMgr.GetValue(key)
+	})
+
+	return &cacheMgr{groupCache: groupCacheMgr, redisCache: redisCacheMgr}
 }
 
 type cacheMgr struct {
@@ -33,7 +35,7 @@ func (c *cacheMgr) GetValue(key string) string {
 	return c.groupCache.GetValue(key)
 }
 
-func (c *cacheMgr) RemoveValue(key string) string {
+func (c *cacheMgr) RemoveValue(key string) {
 	c.groupCache.RemoveValue(key)
 	c.redisCache.RemoveValue(key)
 }
