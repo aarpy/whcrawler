@@ -14,7 +14,6 @@ type DNSCache interface {
 // ValueRequest used by cache and resolver
 type ValueRequest struct {
 	Key      string
-	Owner    string
 	Response chan *ValueResponse
 }
 
@@ -25,8 +24,8 @@ type ValueResponse struct {
 }
 
 // NewValueRequest function
-func NewValueRequest(key string, owner string) *ValueRequest {
-	return &ValueRequest{key, owner, make(chan *ValueResponse, 1)}
+func NewValueRequest(key string) *ValueRequest {
+	return &ValueRequest{key, make(chan *ValueResponse, 1)}
 }
 
 // NewValueResponse function

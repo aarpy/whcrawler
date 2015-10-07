@@ -33,7 +33,6 @@ func (c *redisCache) GetValue(request *api.ValueRequest) {
 		"domain": request.Key,
 		"value":  value,
 		"err":    err,
-		"owner":  request.Owner,
 	}).Info("RedisCache:GetValue:GetComplete")
 
 	// Value found without error or empty
@@ -46,14 +45,13 @@ func (c *redisCache) GetValue(request *api.ValueRequest) {
 	log.WithField("domain", request.Key).Info("RedisCache:GetValue:CheckResolver")
 
 	// Request Resolver
-	resolverRequest := api.NewValueRequest(request.Key, "RedisCache")
+	resolverRequest := api.NewValueRequest(request.Key)
 	c.resolverFunc(resolverRequest)
 	resolverResponse := <-resolverRequest.Response
 
 	log.WithFields(log.Fields{
 		"domain": request.Key,
 		"value":  value,
-		"owner":  request.Owner,
 	}).Info("RedisCache:GetValue:FromResolver")
 
 	// Save it to Redis irrespectively to ensure no requests are sent to Resolver

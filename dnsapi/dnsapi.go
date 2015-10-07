@@ -45,7 +45,7 @@ func (d *dnsCacheMgr) GetIP(domainName string, getIPFunc api.GetIPFunc) {
 
 	log.WithField("domain", domainName).Info("DnsApi:GetIP:Start")
 
-	request := api.NewValueRequest(domainName, "DnsApi")
+	request := api.NewValueRequest(domainName)
 
 	d.cache.GetValue(request)
 

@@ -22,18 +22,15 @@ func main() {
 
 	dnsCache := dnsapi.NewDNSCache(dnsServer, dnsConcurrency, dnsRetryTime, groupCacheSize, redisHost)
 
-	dnsCache.GetIP("wisehoot.co", func(ips []net.IP, err error) {
-		log.Info("wisehoot.co:", ips, err)
-	})
-	dnsCache.GetIP("yahoo.com", func(ips []net.IP, err error) {
-		log.Info("yahoo.com:", ips, err)
-	})
-	dnsCache.GetIP("google.com", func(ips []net.IP, err error) {
-		log.Info("google.com:", ips, err)
-	})
-	dnsCache.GetIP("cnn.com", func(ips []net.IP, err error) {
-		log.Info("cnn.com:", ips, err)
-	})
+	domains := []string{"wisehoot.co", "yahoo.com", "google.com"}
+	for _, domain := range domains {
+		go dnsCache.GetIP(domain, func(ips []net.IP, err error) {
+			log.WithFields(log.Fields{
+				"domain": domain,
+				"ips":    ips,
+			}).Info("Main:Domain:Complete")
+		})
+	}
 
 	time.Sleep(10 * time.Millisecond)
 	log.Info("Wisehoot cralwer completed")

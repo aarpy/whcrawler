@@ -22,10 +22,8 @@ func NewGroupCache(cacheSize int64, redisGetFunc GetFunc) Cache {
 		group: gc.NewGroup(singleGroupName, cacheSize, gc.GetterFunc(func(ctx gc.Context, key string, dest gc.Sink) error {
 			log.WithField("domain", key).Info("GroupCache:RedisRequest")
 
-			redisRequest := api.NewValueRequest(key, "GroupCache")
-			log.WithField("domain", key).Info("GroupCache:RedisRequest:Func")
+			redisRequest := api.NewValueRequest(key)
 			redisGetFunc(redisRequest)
-			log.WithField("domain", key).Info("GroupCache:RedisRequest:Wait")
 			redisResponse := <-redisRequest.Response
 
 			log.WithField("domain", key).Info("GroupCache:RedisRequest:Done")
@@ -42,7 +40,6 @@ func (c *groupCacheMgr) GetValue(request *api.ValueRequest) {
 	log.WithFields(log.Fields{
 		"domain": request.Key,
 		"value":  value,
-		"owner":  request.Owner,
 	}).Info("GroupCache:GetValue:Get")
 
 	// send response to client
