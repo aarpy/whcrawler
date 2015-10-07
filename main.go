@@ -25,5 +25,5 @@ func main() {
 	dnsCache.GetIP("wisehoot.co")
 	dnsCache.GetIP("wisehoot.co")
 
-	thread.Sleep(10 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 }

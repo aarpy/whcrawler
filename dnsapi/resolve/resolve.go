@@ -43,7 +43,7 @@ var retryDelay time.Duration
 
 // Resolver interface
 type Resolver interface {
-	Resolve(domainName string) int
+	Resolve(domainName string) net.IP
 }
 
 type resolveMgr struct {
@@ -62,14 +62,14 @@ func NewResolver(dnsServer string, concurrency int, packetsPerSecond int, retryT
 }
 
 // Resolve function to resolve a domain name into IP address
-func (r *resolveMgr) Resolve(domainName string) int {
+func (r *resolveMgr) Resolve(domainName string) net.IP {
 
 	sendingDelay = time.Duration(1000000000/r.packetsPerSecond) * time.Nanosecond
 	var err error
 	retryDelay, err = time.ParseDuration(r.retryTime)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Can't parse duration %s\n", r.retryTime)
-		return 0
+		return nil
 	}
 
 	fmt.Fprintf(os.Stderr, "Server: %s, sending delay: %s (%d pps), retry delay: %s\n",
@@ -113,7 +113,7 @@ func (r *resolveMgr) Resolve(domainName string) int {
 		avgTries,
 		float64(domainsCount)/td.Seconds())
 
-	return 1
+	return nil
 }
 
 type domainRecord struct {

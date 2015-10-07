@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/aarpy/wisehoot/crawler/dnsapi/cache"
 	"github.com/aarpy/wisehoot/crawler/dnsapi/resolve"
@@ -35,9 +36,9 @@ type dnsCacheMgr struct {
 func (d *dnsCacheMgr) GetIP(domainName string) []net.IP {
 	var ipNumbers []net.IP
 
-	if ipStrings := d.cache(domainName); ipStrings != nil {
-		for _, ipString := range Split(ipStrings, " ") {
-			append(ipNumbers, ParseIP(ipString))
+	if ipStrings := d.cache.GetValue(domainName); ipStrings != "" {
+		for _, ipString := range strings.Split(ipStrings, " ") {
+			ipNumbers = append(ipNumbers, net.ParseIP(ipString))
 		}
 		return ipNumbers
 	}
