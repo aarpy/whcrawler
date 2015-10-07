@@ -23,7 +23,7 @@ func NewDNSCache(dnsServer string, dnsConcurency int, dnsRetryTime string, group
 
 	cacheMgr := cache.NewCache(groupCacheSize, redisHost, func(request *api.ValueRequest) {
 
-		response := api.NewValueResponse("52.1.98.187`", nil)
+		response := api.NewValueResponse("52.1.98.187", nil)
 
 		log.WithField("IP", response.Value).Info("Resolver response:")
 
@@ -60,10 +60,11 @@ func (d *dnsCacheMgr) GetIP(domainName string, getIPFunc api.GetIPFunc) {
 			ipStrings := strings.Split(response.Value, " ")
 			ipNumbers := make([]net.IP, len(ipStrings))
 			if response.Value != "" {
-				for _, ipString := range ipStrings {
-					ipNumbers = append(ipNumbers, net.ParseIP(ipString))
+				for i, ipString := range ipStrings {
+					ipNumbers[i] = net.ParseIP(ipString)
 				}
 			}
+
 			getIPFunc(ipNumbers, nil)
 		} else {
 			log.WithField("domain", domainName).Info("DnsApi:GetIP:ChannelClosed")

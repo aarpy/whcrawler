@@ -2,7 +2,6 @@ package main
 
 import (
 	"net"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -22,16 +21,19 @@ func main() {
 
 	dnsCache := dnsapi.NewDNSCache(dnsServer, dnsConcurrency, dnsRetryTime, groupCacheSize, redisHost)
 
-	domains := []string{"wisehoot.co", "yahoo.com", "google.com"}
-	for _, domain := range domains {
-		go dnsCache.GetIP(domain, func(ips []net.IP, err error) {
-			log.WithFields(log.Fields{
-				"domain": domain,
-				"ips":    ips,
-			}).Info("Main:Domain:Complete")
-		})
+	for i := 0; i < 3; i++ {
+		domains := []string{"wisehoot.co"}
+		for _, domain := range domains {
+			dnsCache.GetIP(domain, func(ips []net.IP, err error) {
+				log.WithFields(log.Fields{
+					"domain":  domain,
+					"ips":     ips,
+					"ips_len": len(ips),
+				}).Info("Main:Domain:Complete")
+			})
+			log.Info("----")
+		}
 	}
 
-	time.Sleep(10 * time.Millisecond)
 	log.Info("Wisehoot cralwer completed")
 }
