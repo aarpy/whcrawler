@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"github.com/aarpy/wisehoot/crawler/agent"
+	"github.com/aarpy/whcrawler/agent"
 )
 
 const (

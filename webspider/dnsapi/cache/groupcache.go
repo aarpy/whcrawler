@@ -4,7 +4,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	gc "github.com/golang/groupcache"
 
-	"github.com/aarpy/wisehoot/crawler/webspider/dnsapi/api"
+	"github.com/aarpy/whcrawler/webspider/dnsapi/api"
 )
 
 const (

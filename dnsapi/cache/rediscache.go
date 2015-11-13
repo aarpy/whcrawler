@@ -4,7 +4,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/redis.v3"
 
-	"github.com/aarpy/wisehoot/crawler/webspider/dnsapi/api"
+	"github.com/aarpy/whcrawler/webspider/dnsapi/api"
 )
 
 // NewRedisCache function

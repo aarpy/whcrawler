@@ -6,7 +6,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/aarpy/wisehoot/crawler/webspider/dnsapi"
+	"github.com/aarpy/whcrawler/webspider/dnsapi"
 )
 
 const (

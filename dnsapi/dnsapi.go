@@ -8,9 +8,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/aarpy/wisehoot/crawler/webspider/dnsapi/api"
-	"github.com/aarpy/wisehoot/crawler/webspider/dnsapi/cache"
-	"github.com/aarpy/wisehoot/crawler/webspider/dnsapi/resolve"
+	"github.com/aarpy/whcrawler/webspider/dnsapi/api"
+	"github.com/aarpy/whcrawler/webspider/dnsapi/cache"
+	"github.com/aarpy/whcrawler/webspider/dnsapi/resolve"
 )
 
 // NewDNSCache is a great class

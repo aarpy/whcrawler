@@ -11,7 +11,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/aarpy/wisehoot/crawler/webspider/dnsapi/api"
+	"github.com/aarpy/whcrawler/webspider/dnsapi/api"
 )
 
 func doReadDomains(request *api.ValueRequest, requests chan<- *api.ValueRequest, domainSlotAvailable <-chan bool) {
