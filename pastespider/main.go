@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	devKey   = "c980e3546ef3099f8e9cc68f3cce3a62"
+	devKey   = ""
 	dbServer = "localhost:1234"
 )
 
